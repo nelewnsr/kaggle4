@@ -9,6 +9,7 @@ library(glmnet)
 require(rpart)
 require(FNN)
 library(OpenImageR)
+library(gbm)
 
 setwd("/Users/Nele/Desktop/Big Data Analytics/Competition 4")
 
@@ -106,7 +107,7 @@ HOG_apply(Sunsets[1:10,], 3, 3)
 Sunsets[2]
 Sunsets[1:10,]
 #count = sum(pixel_value),
-nr = nc = 7 #verhogen 7
+nr = nc = 3 #verhogen 7
 myFeatures  <- . %>% # starting with '.' defines the pipe to be a function 
   group_by(file, X=cut(x, nr, labels = FALSE)-1, Y=cut(y, nc, labels=FALSE)-1, color) %>%
   summarise(
@@ -123,11 +124,11 @@ myFeatures  <- . %>% # starting with '.' defines the pipe to be a function
 
   
   
-mutate(cluster = kmeans(pixel_value, 5)$cluster) 
+# mutate(cluster = kmeans(pixel_value, 5)$cluster) 
 
 
-example <- readJPEG_as_df(skies[4], myFeatures) %>% head(10)
-names(example)
+# example <- readJPEG_as_df(skies[4], myFeatures) %>% head(10)
+# names(example)
 
 
 # because we need to reshape from long to wide format multiple times lets define a function:
@@ -155,43 +156,23 @@ head(Train)
 
 ############## Modelling ##############
 
-### Classification Tree -------
 
-fittree = rpart(factor(category) ~ . - file, Train)
+# Classification Tree -----------------------------------------------------
+
 fittree = rpart(factor(category) ~ . , Train[, !colnames(Train) %in% c("file")])
-
-# various representations: 
-## graphical decision tree, 
-#plot(fittree, compress=T, uniform=T, margin=0.05, branch=.75); text(fittree, cex=0.6, all=T, use.n=T)
-## textual decision tree, 
-#fittree 
-## data frame (for some reason the 'split' that contains the split value is missing)
-#fittree$frame %>% select(-yval2)
-
-# information about the CV of complexity penalty optimum
-#printcp(fittree)
-
 opttree = prune(fittree, cp = 0.033333)
-#plot(opttree, compress=T, uniform=T, margin=0.05, branch=.75); text(opttree, cex=0.6, all=T, use.n=T)
 
-#predtree = predict(fittree, Train, type='class') # also try opttree in stead of fittree
-#table(truth=Train$category, pred = predtree)
-#mean(Train$category == predtree) # 80% correct... can human brains do better?
 
-### Random Forest -------
+# Random Forest -----------------------------------------------------------
 
-ranfor = randomForest(factor(category) ~ . - file, Train)
-#ranfor
+ranfor = randomForest(factor(category) ~ . - file, Train, importance =TRUE)
 
-#layout(matrix(1:4,2,2,byrow=T))
-#plot(ranfor)
-#varImpPlot(ranfor,cex=0.5)
 
-#getTree(ranfor, 2, labelVar = T) # unfortunately not easy to plot this with plot.rpart
+# Boosting ----------------------------------------------------------------
 
-#predrf = predict(ranfor, Train, type='class')
-#table(truth = Train$category, pred = predrf)
-#mean(Train$category != predrf) # prediction is essentially perfect... with OOB error this indicates overfitting
+boost.boston=gbm(factor(category) ~ ., TrainTrain[, !colnames(Train) %in% c("file")], distribution = "multinomial", 
+                 n.trees = 5000, interaction.depth = 4)
+
 
 ############## Preparing for Submission ##############
 
@@ -199,14 +180,25 @@ Test = map_df(test_set, readJPEG_as_df, featureExtractor = myFeatures) %>% myImg
 Test %>% ungroup %>% transmute(file=file, category = predict(ranfor, ., type = "class")) %>% write_csv("my_submission.csv")
 file.show("my_submission.csv")
 
+Test = map_df(test_set, readJPEG_as_df, featureExtractor = myFeatures) %>% myImgDFReshape
+Test %>% ungroup %>% transmute(file=file, category = predict(boost.boston, ., n.trees=5000, response = "class")) %>% write_csv("my_submission.csv")
+file.show("my_submission.csv")
+
+predict(boost.boston,newdata=Test, n.trees=5000)
 
 Test = map_df(test_set, readJPEG_as_df, featureExtractor = myFeatures) %>% myImgDFReshape
 random = Test %>% ungroup %>% transmute(file=file, category = predict(ranfor, ., type = "class"))
-count_random = count(random, var = category)
+count_random_60 = count(random, var = category)
 
 Test = map_df(test_set, readJPEG_as_df, featureExtractor = myFeatures) %>% myImgDFReshape
 tree = Test %>% ungroup %>% transmute(file=file, category = predict(fittree, ., type = "class"))
 count(tree, var = category)
 
+count_random_60
+count_random_100
+count_random_150
+count_random_1050
+
 #neural net
 #(extreme) boosting
+#xgboost
