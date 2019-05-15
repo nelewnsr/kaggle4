@@ -41,23 +41,6 @@ readJPEG_as_df <- function(path, featureExtractor = I) {
     featureExtractor
 }
 
-readJPEG_as_df(sunsets[1]) %>% head()
-
-#peekImage = . %>% spread(color, pixel_value) %>%  mutate(x=rev(x), color = rgb(r,g,b)) %>%  {ggplot(., aes(y, x, fill = color)) + geom_tile(show.legend = FALSE) + theme_light() + 
-#    scale_fill_manual(values=levels(as.factor(.$color))) + facet_wrap(~ file)}
-
-#readJPEG_as_df(rivers[2]) %>% peekImage
-#readJPEG_as_df(sunsets[18]) %>% peekImage
-
-#readJPEG_as_df(sunsets[18]) %>% ggplot(aes(pixel_value, fill=color)) + geom_density(alpha=0.5)
-
-#bind_rows(
-#  readJPEG_as_df(rivers[2]) %>% mutate(category = "rivers"), 
-#  readJPEG_as_df(sunsets[10]) %>% mutate(category = "sunsets"), 
-#  readJPEG_as_df(trees[122]) %>% mutate(category = "trees_and_forest"), 
-#  readJPEG_as_df(skies[20]) %>% mutate(category = "cloudy_sky")
-#) %>% 
-#  ggplot(aes(pixel_value, fill=color)) + geom_density(alpha=0.5, col=NA) + facet_wrap(~ category)
 
 Rivers  = map_df(rivers, readJPEG_as_df) %>% mutate(category = "rivers")
 Sunsets = map_df(sunsets, readJPEG_as_df) %>% mutate(category = "sunsets")
@@ -70,43 +53,6 @@ try <- bind_rows(Rivers, Sunsets, Skies, Trees) %>%
 
 ############## Feature Extraction ##############
 
-model <- keras_model_sequential() 
-model %>% 
-  layer_dense(units = 256, activation = "relu") %>% 
-  layer_dropout(rate = 0.4) %>% 
-  layer_dense(units = 128, activation = "relu") %>%
-  layer_dropout(rate = 0.3) %>%
-  layer_dense(units = 10, activation = "softmax")
-
-#cl1 <- kmeans(Rivers$pixel_value, 5)
-#plot(Rivers$pixel_value, col = cl1$cluster)
-
-#cl2 <- kmeans(Sunsets$pixel_value, 5)$cluster
-#plot(Sunsets$pixel_value, col = cl2$cluster)
-
-#min(Sunsets$pixel_value)
-#min(Rivers$pixel_value)
-#min(Skies$pixel_value)
-
-#count(Rivers, vars = pixel_value)
-#as.data.frame(table(Rivers$pixel_value))
-
-#count = as.data.frame(table(pixel_value))$Freq)
-
-mean(Sunsets$pixel_value)
-k <- kmeans(Sunsets$pixel_value, 5)
-k$centers
-
-
-FOLDER_path = paste0(system.file("tmp_images", "same_type", package = "OpenImageR"), '/')
-
-res = HOG_apply(Sunsets)
-res
-
-HOG_apply(Sunsets[1:10,], 3, 3)
-Sunsets[2]
-Sunsets[1:10,]
-#count = sum(pixel_value),
 nr = nc = 3 #verhogen 7
 myFeatures  <- . %>% # starting with '.' defines the pipe to be a function 
   group_by(file, X=cut(x, nr, labels = FALSE)-1, Y=cut(y, nc, labels=FALSE)-1, color) %>%
@@ -127,8 +73,8 @@ myFeatures  <- . %>% # starting with '.' defines the pipe to be a function
 # mutate(cluster = kmeans(pixel_value, 5)$cluster) 
 
 
-# example <- readJPEG_as_df(skies[4], myFeatures) %>% head(10)
-# names(example)
+example <- readJPEG_as_df(skies[4], myFeatures) %>% head(10)
+names(example)
 
 
 # because we need to reshape from long to wide format multiple times lets define a function:
